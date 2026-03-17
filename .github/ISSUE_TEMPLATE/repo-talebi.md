@@ -8,7 +8,7 @@ assignees: ''
 Lütfen aşağıdaki kod bloğunun İÇİNDEKİ bilgileri eksiksiz doldurun. *(Satır başlarındaki kelimeleri ve iki noktayı silmeyin)*
 
 ```yaml
-TAKIM: TUFAN
-PROJE: Otonom-Kamera
-MAINTAINER: github_kullanici_adi
+TAKIM: <TUFAN-veya-LIKYA>
+PROJE: <Repo-adi>
+MAINTAINER: <github-kullanici-adi>
 ```
