@@ -1,0 +1,68 @@
+name: Yeni Proje Reposu Olustur ve Ayarla
+
+on:
+  workflow_dispatch:
+    inputs:
+      takim:
+        description: 'Hangi Takım İçin?'
+        required: true
+        type: choice
+        options:
+          - TUFAN
+          - LIKYA
+      proje_adi:
+        description: 'Proje Adı (Boşluk yerine tire kullanın, örn: Goruntu-Isleme)'
+        required: true
+        type: string
+      sorumlu_kisi:
+        description: 'Proje Sorumlusunun GitHub Kullanıcı Adı (Maintainer)'
+        required: true
+        type: string
+
+jobs:
+  kurulum:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo ve Ayarları Yapılandır
+        env:
+          GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN }}
+          ORG: "TFN-Software-Team"
+        run: |
+          REPO_NAME="${{ github.event.inputs.takim }}-${{ github.event.inputs.proje_adi }}"
+          MAINTAINER="${{ github.event.inputs.sorumlu_kisi }}"
+          
+          echo "1. $REPO_NAME reposu oluşturuluyor..."
+          # --add-readme: Branch koruması ekleyebilmek için repoda en az 1 commit (main branch) olması şarttır.
+          gh repo create "$ORG/$REPO_NAME" --private --add-readme
+          
+          echo "2. $MAINTAINER kullanıcısı Maintainer olarak atanıyor..."
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/$ORG/$REPO_NAME/collaborators/$MAINTAINER \
+            -f permission='maintain'
+            
+          echo "3. Branch koruma (Branch Protection) kuralları hazırlanıyor..."
+          cat << 'EOF' > protection.json
+          {
+            "required_status_checks": null,
+            "enforce_admins": false,
+            "required_pull_request_reviews": {
+              "dismiss_stale_reviews": true,
+              "require_code_owner_reviews": false,
+              "required_approving_review_count": 1
+            },
+            "restrictions": null
+          }
+          EOF
+          
+          echo "4. Kurallar main branch'ine uygulanıyor..."
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/$ORG/$REPO_NAME/branches/main/protection \
+            --input protection.json
+            
+          echo "✅ İşlem Başarılı! $REPO_NAME kullanıma hazır."
