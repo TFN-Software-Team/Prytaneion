@@ -9,25 +9,34 @@ jobs:
     if: ${{ !github.event.issue.pull_request && github.event.comment.body == '/repo-onay' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Yetki Kontrolü
+      - name: Yetki Kontrolü (Owner Check)
         env:
+          GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN }}
+          ORG: "TFN-Software-Team"
           YORUM_YAPAN: ${{ github.event.comment.user.login }}
-          YETKILILER: "sedo,baskanin_kullanici_adi" # Onay verecek kişileri araya virgül koyarak yazın
         run: |
-          # Kullanıcı adını tam eşleştirmek için başa ve sona virgül ekledik (Yetki bug'ı çözüldü)
-          if [[ ",$YETKILILER," != *",$YORUM_YAPAN,"* ]]; then
-            echo "❌ Hata: Bu işlemi sadece yetkililer yapabilir!"
+          echo "Kullanıcının rolü sorgulanıyor: $YORUM_YAPAN"
+          
+          # GitHub API üzerinden kullanıcının organizasyondaki rolünü (role) çekiyoruz
+          ROLE=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /orgs/$ORG/memberships/$YORUM_YAPAN \
+            --jq '.role')
+            
+          # GitHub'da Owner yetkisinin API karşılığı 'admin'dir
+          if [[ "$ROLE" != "admin" ]]; then
+            echo "❌ Hata: Bu işlemi sadece Organizasyon Sahipleri (Owner) yapabilir! Mevcut rolünüz: $ROLE"
             exit 1
           fi
-          echo "✅ Yetki doğrulandı: $YORUM_YAPAN"
+          echo "✅ Yetki doğrulandı: $YORUM_YAPAN organizasyon sahibidir (Owner)."
 
       - name: Şablondan Verileri Çek
         id: parse
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Issue'yu okumak için gereken geçici token
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          # CRITICAL FIX: Çok satırlı veriyi YAML içine gömmek yerine GitHub CLI ile güvenli çekiyoruz
           BODY=$(gh issue view $ISSUE_NUMBER --json body --jq '.body')
           
           TAKIM=$(echo "$BODY" | grep -i -m 1 "^TAKIM:" | cut -d':' -f2 | tr -d '\r' | xargs)
