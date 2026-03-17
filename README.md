@@ -1,6 +1,8 @@
 # Prytaneion
 
-**TFN-Software-Team** organizasyonunun merkezi yönetim ve otomasyon deposudur.
+> *Antik Yunan şehir-devletlerinde **Prytaneion**, kentin kutsal ateşinin yandığı ve tüm yönetim kararlarının alındığı merkez yapıydı.*
+
+**TFN-Software-Team** organizasyonunun yönetim merkezi. Tıpkı adını aldığı yapı gibi, organizasyonun tüm otomasyon süreçleri ve iş akışları bu repodan yönetilir.
 
 ---
 
