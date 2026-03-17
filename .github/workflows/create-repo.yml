@@ -33,7 +33,7 @@ jobs:
           
           echo "1. $REPO_NAME reposu oluşturuluyor..."
           # --add-readme: Branch koruması ekleyebilmek için repoda en az 1 commit (main branch) olması şarttır.
-          gh repo create "$ORG/$REPO_NAME" --private --add-readme
+          gh repo create "$ORG/$REPO_NAME" --public --add-readme
           
           echo "2. $MAINTAINER kullanıcısı Maintainer olarak atanıyor..."
           gh api \
