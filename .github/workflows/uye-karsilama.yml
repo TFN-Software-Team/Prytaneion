@@ -1,8 +1,11 @@
 name: Yeni Üye Karşılama
 
 on:
-  organization:
-    types: [member_added]
+  workflow_dispatch:
+    inputs:
+      kullanici_adi:
+        description: 'Yeni üyenin GitHub kullanıcı adı'
+        required: true
 
 jobs:
   karsilama:
@@ -14,7 +17,7 @@ jobs:
           github-token: ${{ secrets.ORG_ADMIN_TOKEN }}
           script: |
             const org     = 'TFN-Software-Team';
-            const yeniUye = context.payload.membership.user.login;
+            const yeniUye = '${{ inputs.kullanici_adi }}';
 
             await github.rest.issues.create({
               owner: org,
