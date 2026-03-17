@@ -32,7 +32,7 @@ jobs:
       - name: Şablondan Verileri Çek
         id: parse
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           MEVCUT_REPO: ${{ github.repository }} # Action'ın çalıştığı repoyu dinamik olarak alır
         run: |
