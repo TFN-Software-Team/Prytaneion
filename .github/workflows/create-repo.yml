@@ -17,14 +17,12 @@ jobs:
         run: |
           echo "Kullanıcının rolü sorgulanıyor: $YORUM_YAPAN"
           
-          # GitHub API üzerinden kullanıcının organizasyondaki rolünü (role) çekiyoruz
           ROLE=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /orgs/$ORG/memberships/$YORUM_YAPAN \
             --jq '.role')
             
-          # GitHub'da Owner yetkisinin API karşılığı 'admin'dir
           if [[ "$ROLE" != "admin" ]]; then
             echo "❌ Hata: Bu işlemi sadece Organizasyon Sahipleri (Owner) yapabilir! Mevcut rolünüz: $ROLE"
             exit 1
@@ -36,8 +34,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          MEVCUT_REPO: ${{ github.repository }} # Action'ın çalıştığı repoyu dinamik olarak alır
         run: |
-          BODY=$(gh issue view $ISSUE_NUMBER --json body --jq '.body')
+          # '--repo' parametresi ile hatayı çözdük
+          BODY=$(gh issue view $ISSUE_NUMBER --repo $MEVCUT_REPO --json body --jq '.body')
           
           TAKIM=$(echo "$BODY" | grep -i -m 1 "^TAKIM:" | cut -d':' -f2 | tr -d '\r' | xargs)
           PROJE=$(echo "$BODY" | grep -i -m 1 "^PROJE:" | cut -d':' -f2 | tr -d '\r' | xargs)
@@ -99,6 +99,8 @@ jobs:
           GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN }}
           REPO_URL: "https://github.com/TFN-Software-Team/${{ steps.parse.outputs.takim }}-${{ steps.parse.outputs.proje }}"
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          MEVCUT_REPO: ${{ github.repository }}
         run: |
-          gh issue comment $ISSUE_NUMBER --body "🚀 **İşlem Başarılı!** Repo onaylandı ve oluşturuldu.<br>👉 [Repoya Gitmek İçin Tıklayın]($REPO_URL)"
-          gh issue close $ISSUE_NUMBER
+          # Yorum atarken ve kapatırken de reponun yerini gösteriyoruz
+          gh issue comment $ISSUE_NUMBER --repo $MEVCUT_REPO --body "🚀 **İşlem Başarılı!** Repo onaylandı ve oluşturuldu.<br>👉 [Repoya Gitmek İçin Tıklayın]($REPO_URL)"
+          gh issue close $ISSUE_NUMBER --repo $MEVCUT_REPO
