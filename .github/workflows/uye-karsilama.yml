@@ -1,0 +1,47 @@
+name: Yeni Üye Karşılama
+
+on:
+  organization:
+    types: [member_added]
+
+jobs:
+  karsilama:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Karşılama issue'su aç
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.ORG_ADMIN_TOKEN }}
+          script: |
+            const org     = 'TFN-Software-Team';
+            const yeniUye = context.payload.membership.user.login;
+
+            await github.rest.issues.create({
+              owner: org,
+              repo:  'Prytaneion',
+              title: `👋 Hoş geldin, @${yeniUye}!`,
+              labels: ['hosgeldin'],
+              body: [
+                `## Merhaba @${yeniUye}! 🎉`,
+                ``,
+                `**TFN-Software-Team**'e hoş geldin.`,
+                `Başlamadan önce aşağıdaki kaynakları incelemeni öneririz:`,
+                ``,
+                `### 📖 Okuması Zorunlu`,
+                `- [CONTRIBUTING.md](https://github.com/${org}/Prytaneion/blob/main/CONTRIBUTING.md) — Branch, commit ve PR kuralları`,
+                `- [Prytaneion README](https://github.com/${org}/Prytaneion) — İş akışları ve repo talep sistemi`,
+                ``,
+                `### 🚀 İlk Adımlar`,
+                `- Çalışacağın repoya git, README'yi oku`,
+                `- Bir şey geliştirmek istiyorsan \`feature/<aciklama>\` branch'i aç`,
+                `- Soruların için bu repoda yeni bir issue açabilirsin`,
+                ``,
+                `### 🛠️ Takımlar`,
+                `| Takım | Alan |`,
+                `|---|---|`,
+                `| [TUFAN - Software Team](https://github.com/orgs/${org}/teams/tufan-software-team) | TUFAN Elektromobil |`,
+                `| [LIKYA - Software Team](https://github.com/orgs/${org}/teams/likya-software-team) | LİKYA Otonom Araç |`,
+                ``,
+                `Takım kaptanın seni ilgili takıma ekleyecek. Herhangi bir sorun olursa bu issue'ya yorum atabilirsin. İyi çalışmalar! 💪`
+              ].join('\n')
+            });
