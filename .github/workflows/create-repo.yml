@@ -15,44 +15,47 @@ jobs:
           ORG: "TFN-Software-Team"
           YORUM_YAPAN: ${{ github.event.comment.user.login }}
         run: |
-          echo "Kullanıcının rolü sorgulanıyor: $YORUM_YAPAN"
-          
           ROLE=$(gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /orgs/$ORG/memberships/$YORUM_YAPAN \
             --jq '.role')
-            
+
           if [[ "$ROLE" != "admin" ]]; then
-            echo "❌ Hata: Bu işlemi sadece Organizasyon Sahipleri (Owner) yapabilir! Mevcut rolünüz: $ROLE"
+            echo "❌ Hata: Bu işlemi sadece Owner'lar yapabilir! Mevcut rol: $ROLE"
             exit 1
           fi
-          echo "✅ Yetki doğrulandı: $YORUM_YAPAN organizasyon sahibidir (Owner)."
+          echo "✅ Yetki doğrulandı: $YORUM_YAPAN organizasyon sahibidir."
 
       - name: Şablondan Verileri Çek
         id: parse
         env:
           GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          MEVCUT_REPO: ${{ github.repository }} # Action'ın çalıştığı repoyu dinamik olarak alır
+          MEVCUT_REPO: ${{ github.repository }}
         run: |
-          # '--repo' parametresi ile hatayı çözdük
           BODY=$(gh issue view $ISSUE_NUMBER --repo $MEVCUT_REPO --json body --jq '.body')
-          
+
           TAKIM=$(echo "$BODY" | grep -i -m 1 "^TAKIM:" | cut -d':' -f2 | tr -d '\r' | xargs)
           PROJE=$(echo "$BODY" | grep -i -m 1 "^PROJE:" | cut -d':' -f2 | tr -d '\r' | xargs)
           MAINTAINER=$(echo "$BODY" | grep -i -m 1 "^MAINTAINER:" | cut -d':' -f2 | tr -d '\r' | xargs)
-          
+
           if [[ -z "$TAKIM" || -z "$PROJE" || -z "$MAINTAINER" ]]; then
-            echo "❌ Hata: Issue formatı yanlış veya eksik doldurulmuş!"
+            echo "❌ Hata: Issue formatı yanlış veya eksik!"
             exit 1
           fi
-          
+
+          if [[ "$TAKIM" != "TUFAN" && "$TAKIM" != "LIKYA" ]]; then
+            gh issue comment $ISSUE_NUMBER --repo $MEVCUT_REPO \
+              --body "❌ **Hata:** TAKIM değeri sadece \`TUFAN\` veya \`LIKYA\` olabilir."
+            exit 1
+          fi
+
           echo "takim=$TAKIM" >> $GITHUB_OUTPUT
           echo "proje=$PROJE" >> $GITHUB_OUTPUT
           echo "maintainer=$MAINTAINER" >> $GITHUB_OUTPUT
 
-      - name: Public Repoyu Oluştur ve Ayarla
+      - name: Repoyu Oluştur ve Ayarla
         env:
           GH_TOKEN: ${{ secrets.ORG_ADMIN_TOKEN }}
           ORG: "TFN-Software-Team"
@@ -61,19 +64,33 @@ jobs:
           MAINTAINER: ${{ steps.parse.outputs.maintainer }}
         run: |
           REPO_NAME="${TAKIM}-${PROJE}"
-          
-          echo "1. $REPO_NAME reposu PUBLIC olarak oluşturuluyor..."
+
+          if [[ "$TAKIM" == "TUFAN" ]]; then
+            TEAM_SLUG="tufan-software-team"
+          else
+            TEAM_SLUG="likya-software-team"
+          fi
+
+          echo "1. $REPO_NAME reposu oluşturuluyor..."
           gh repo create "$ORG/$REPO_NAME" --public --add-readme
-          
-          echo "2. $MAINTAINER Maintainer yapılıyor..."
+
+          echo "2. Takıma atanıyor: $TEAM_SLUG"
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /orgs/$ORG/teams/$TEAM_SLUG/repos/$ORG/$REPO_NAME \
+            -f permission='maintain'
+
+          echo "3. $MAINTAINER Maintainer yapılıyor..."
           gh api \
             --method PUT \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/$ORG/$REPO_NAME/collaborators/$MAINTAINER \
             -f permission='maintain'
-            
-          echo "3. Branch koruma kuralları uygulanıyor..."
+
+          echo "4. Branch koruma kuralları uygulanıyor..."
           cat << 'EOF' > protection.json
           {
             "required_status_checks": null,
@@ -83,10 +100,12 @@ jobs:
               "require_code_owner_reviews": false,
               "required_approving_review_count": 1
             },
-            "restrictions": null
+            "restrictions": null,
+            "allow_force_pushes": false,
+            "allow_deletions": false
           }
           EOF
-          
+
           gh api \
             --method PUT \
             -H "Accept: application/vnd.github+json" \
@@ -101,6 +120,6 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           MEVCUT_REPO: ${{ github.repository }}
         run: |
-          # Yorum atarken ve kapatırken de reponun yerini gösteriyoruz
-          gh issue comment $ISSUE_NUMBER --repo $MEVCUT_REPO --body "🚀 **İşlem Başarılı!** Repo onaylandı ve oluşturuldu.<br>👉 [Repoya Gitmek İçin Tıklayın]($REPO_URL)"
+          gh issue comment $ISSUE_NUMBER --repo $MEVCUT_REPO \
+            --body "🚀 **İşlem Başarılı!** Repo oluşturuldu.<br>👉 [Repoya Gitmek İçin Tıklayın]($REPO_URL)"
           gh issue close $ISSUE_NUMBER --repo $MEVCUT_REPO
